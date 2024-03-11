@@ -202,7 +202,7 @@ export interface TransactionQueriable extends Queriable {
  * Database interfaces that should be implemented by database
  * drivers and exposed to the user
  */
-
+// deno-lint-ignore no-empty-interface
 export interface ConnectionOptions extends Record<string, unknown> {}
 
 /**
