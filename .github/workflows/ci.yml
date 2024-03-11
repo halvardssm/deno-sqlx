@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  check:
+    name: Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Clone repo
+        uses: actions/checkout@v3
+
+      - name: Install deno
+        uses: denoland/setup-deno@v1
+
+      - name: Check fmt
+        run: deno task check
+
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Clone repo
+        uses: actions/checkout@v3
+
+      - name: Install deno
+        uses: denoland/setup-deno@v1
+
+      - name: Run unit tests
+        run: deno task test
+
+      - name: Generate lcov
+        run: deno coverage --unstable --lcov ./coverage > coverage.lcov
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v1
+        with:
+          files: coverage.lcov
