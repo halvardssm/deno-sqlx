@@ -10,6 +10,7 @@ import {
   ArrayRow,
   ConnectionOptions,
   ConnectionPoolOptions,
+  CoreTransactionOptions,
   Param,
   PoolConnection,
   Row,
@@ -27,8 +28,13 @@ import {
 export abstract class CoreConnectionWrapper<
   Client,
   ClientOptions extends ConnectionOptions,
-  TransactionClient extends TransactionQueriable,
-> extends AbstractConnection<ClientOptions, TransactionClient> {
+  TransactionOptions extends CoreTransactionOptions,
+  TransactionClient extends TransactionQueriable<TransactionOptions>,
+> extends AbstractConnection<
+  ClientOptions,
+  TransactionOptions,
+  TransactionClient
+> {
   /**
    * Connection to the database
    */
@@ -63,9 +69,15 @@ export abstract class CoreConnectionWrapper<
 export abstract class CoreConnectionPoolWrapper<
   Client,
   ClientOptions extends ConnectionPoolOptions,
-  TransactionClient extends TransactionQueriable,
-  PoolClient extends PoolConnection<TransactionClient>,
-> extends AbstractConnectionPool<ClientOptions, TransactionClient, PoolClient> {
+  TransactionOptions extends CoreTransactionOptions,
+  TransactionClient extends TransactionQueriable<TransactionOptions>,
+  PoolClient extends PoolConnection<TransactionOptions, TransactionClient>,
+> extends AbstractConnectionPool<
+  ClientOptions,
+  TransactionOptions,
+  TransactionClient,
+  PoolClient
+> {
   /**
    * Connection to the database
    */
@@ -96,8 +108,9 @@ export abstract class CoreConnectionPoolWrapper<
  */
 export abstract class CorePoolConnectionWrapper<
   Client,
-  TransactionClient extends TransactionQueriable,
-> implements PoolConnection<TransactionClient> {
+  TransactionOptions extends CoreTransactionOptions,
+  TransactionClient extends TransactionQueriable<TransactionOptions>,
+> implements PoolConnection<TransactionOptions, TransactionClient> {
   /**
    * Connection to the database
    */
@@ -136,6 +149,9 @@ export abstract class CorePoolConnectionWrapper<
     sql: string,
     params?: Param[],
   ): Promise<AsyncIterable<T>>;
+  abstract beginTransaction(
+    options?: TransactionOptions["beginTransactionOptions"],
+  ): Promise<TransactionClient>;
   abstract transaction<T>(
     fn: (connection: TransactionClient) => Promise<T>,
   ): Promise<T>;
@@ -151,7 +167,8 @@ export abstract class CorePoolConnectionWrapper<
  */
 export abstract class CoreTransactionClientWrapper<
   TransactionClient,
-> implements TransactionQueriable {
+  TransactionOptions extends CoreTransactionOptions,
+> implements TransactionQueriable<TransactionOptions> {
   /**
    * Connection to the database
    */
@@ -163,8 +180,6 @@ export abstract class CoreTransactionClientWrapper<
     this.client = transactionClient;
   }
 
-  abstract commit(savePoint?: string): Promise<void>;
-  abstract rollback(savePoint?: string): Promise<void>;
   abstract execute(sql: string, params?: Param[]): Promise<number | undefined>;
   abstract query<T extends Row = Row>(
     sql: string,
@@ -190,6 +205,14 @@ export abstract class CoreTransactionClientWrapper<
     sql: string,
     params?: Param[],
   ): Promise<AsyncIterable<T>>;
+  abstract commitTransaction(
+    options?: TransactionOptions["commitTransactionOptions"],
+  ): Promise<void>;
+  abstract rollbackTransaction(
+    options?: TransactionOptions["rollbackTransactionOptions"],
+  ): Promise<void>;
+  abstract createSavepoint(name: string): Promise<void>;
+  abstract releaseSavepoint(name: string): Promise<void>;
 }
 
 export function emptyAsyncIterable<T>(): AsyncIterable<T> {

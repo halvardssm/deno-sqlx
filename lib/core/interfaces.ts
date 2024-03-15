@@ -18,6 +18,12 @@ export type Row = Record<string, unknown>;
  */
 export type ArrayRow = unknown[];
 
+export type CoreTransactionOptions = {
+  beginTransactionOptions?: Record<string, unknown>;
+  commitTransactionOptions?: Record<string, unknown>;
+  rollbackTransactionOptions?: Record<string, unknown>;
+};
+
 /**
  * Interfaces for collected database features
  */
@@ -149,10 +155,20 @@ export interface Queriable {
  * Represents an object that can execute a transaction.
  */
 export interface Transactionable<
-  TransactionClient extends TransactionQueriable,
+  TransactionOptions extends CoreTransactionOptions,
+  TransactionClient extends TransactionQueriable<TransactionOptions>,
 > {
   /**
-   * Create a transaction
+   * Starts a transaction
+   */
+  beginTransaction(
+    options?: TransactionOptions["beginTransactionOptions"],
+  ): Promise<TransactionClient>;
+
+  /**
+   * Transaction wrapper
+   *
+   * Automatically begins a transaction, executes the callback function, and commits the transaction.
    *
    * If the callback function throws an error, the transaction will be rolled back and the error will be rethrown.
    * If the callback function returns successfully, the transaction will be committed.
@@ -183,19 +199,33 @@ export interface Poolable<Connection> {
  *
  * Represents a transaction client to a database.
  */
-export interface TransactionQueriable extends Queriable {
+export interface TransactionQueriable<
+  TransactionOptions extends CoreTransactionOptions,
+> extends Queriable {
   /**
    * Commit the transaction
-   *
-   * @param savePoint commits to a save point if provided, otherwise commits and ends the transaction
    */
-  commit(savePoint?: string): Promise<void>;
+  commitTransaction(
+    options?: TransactionOptions["commitTransactionOptions"],
+  ): Promise<void>;
   /**
    * Rollback the transaction
-   *
-   * @param savePoint rollbacks to a save point if provided, otherwise rollbacks and ends the transaction
    */
-  rollback(savePoint?: string): Promise<void>;
+  rollbackTransaction(
+    options?: TransactionOptions["rollbackTransactionOptions"],
+  ): Promise<void>;
+  /**
+   * Create a save point
+   *
+   * @param name the name of the save point
+   */
+  createSavepoint(name: string): Promise<void>;
+  /**
+   * Release a save point
+   *
+   * @param name the name of the save point
+   */
+  releaseSavepoint(name: string): Promise<void>;
 }
 
 /**
@@ -214,8 +244,12 @@ export interface ConnectionOptions extends Record<string, unknown> {}
  */
 export interface Connection<
   Options extends ConnectionOptions,
-  TransactionClient extends TransactionQueriable,
-> extends Connectable<Options>, Queriable, Transactionable<TransactionClient> {
+  TransactionOptions extends CoreTransactionOptions,
+  TransactionClient extends TransactionQueriable<TransactionOptions>,
+> extends
+  Connectable<Options>,
+  Queriable,
+  Transactionable<TransactionOptions, TransactionClient> {
 }
 
 /**
@@ -227,9 +261,12 @@ export interface Connection<
  */
 export interface ConnectionPool<
   Options extends ConnectionPoolOptions,
-  TransactionClient extends TransactionQueriable,
-  Pool extends PoolConnection<TransactionClient>,
-> extends Connection<Options, TransactionClient>, Poolable<Pool> {
+  TransactionOptions extends CoreTransactionOptions,
+  TransactionClient extends TransactionQueriable<TransactionOptions>,
+  Pool extends PoolConnection<TransactionOptions, TransactionClient>,
+> extends
+  Connection<Options, TransactionOptions, TransactionClient>,
+  Poolable<Pool> {
 }
 
 export interface ConnectionPoolOptions extends ConnectionOptions {
@@ -246,8 +283,10 @@ export interface ConnectionPoolOptions extends ConnectionOptions {
  * When a user wants to use a connection from a pool,
  * they should use a class implementing this interface.
  */
-export interface PoolConnection<TransactionClient extends TransactionQueriable>
-  extends Queriable, Transactionable<TransactionClient> {
+export interface PoolConnection<
+  TransactionOptions extends CoreTransactionOptions,
+  TransactionClient extends TransactionQueriable<TransactionOptions>,
+> extends Queriable, Transactionable<TransactionOptions, TransactionClient> {
   /**
    * Release the connection to the pool
    */
@@ -275,8 +314,9 @@ export interface PoolConnection<TransactionClient extends TransactionQueriable>
  */
 export abstract class AbstractConnection<
   Options extends ConnectionOptions,
-  TransactionClient extends TransactionQueriable,
-> implements Connection<Options, TransactionClient> {
+  TransactionOptions extends CoreTransactionOptions,
+  TransactionClient extends TransactionQueriable<TransactionOptions>,
+> implements Connection<Options, TransactionOptions, TransactionClient> {
   connectionUrl: string;
   connectionOptions: Options;
 
@@ -315,6 +355,9 @@ export abstract class AbstractConnection<
     sql: string,
     params?: Param[] | undefined,
   ): Promise<AsyncIterable<T>>;
+  abstract beginTransaction(
+    options?: TransactionOptions["beginTransactionOptions"],
+  ): Promise<TransactionClient>;
   abstract transaction<T>(
     fn: (connection: TransactionClient) => Promise<T>,
   ): Promise<T>;
@@ -330,10 +373,12 @@ export abstract class AbstractConnection<
  */
 export abstract class AbstractConnectionPool<
   Options extends ConnectionPoolOptions,
-  TransactionClient extends TransactionQueriable,
-  Pool extends PoolConnection<TransactionClient>,
-> extends AbstractConnection<Options, TransactionClient>
-  implements ConnectionPool<Options, TransactionClient, Pool> {
+  TransactionOptions extends CoreTransactionOptions,
+  TransactionClient extends TransactionQueriable<TransactionOptions>,
+  Pool extends PoolConnection<TransactionOptions, TransactionClient>,
+> extends AbstractConnection<Options, TransactionOptions, TransactionClient>
+  implements
+    ConnectionPool<Options, TransactionOptions, TransactionClient, Pool> {
   poolSize: number;
 
   constructor(connectionUrl: string, connectionOptions: Options) {

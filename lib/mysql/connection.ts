@@ -7,7 +7,7 @@ import {
   Row,
 } from "../core/mod.ts";
 import { Client, ClientConfig } from "@db/mysql";
-import { MySqlTransaction } from "./transaction.ts";
+import { MySqlTransaction, MySqlTransactionOptions } from "./transaction.ts";
 
 export interface MySqlConnectionOptions
   extends ClientConfig, ConnectionOptions {
@@ -16,6 +16,7 @@ export interface MySqlConnectionOptions
 export class MySqlConnection extends CoreConnectionWrapper<
   Client,
   MySqlConnectionOptions,
+  MySqlTransactionOptions,
   MySqlTransaction
 > {
   constructor(
@@ -79,6 +80,11 @@ export class MySqlConnection extends CoreConnectionWrapper<
     return (res.iterator ?? emptyAsyncIterable()) as AsyncIterable<T>;
   }
 
+  /**
+   * Method not implemented.
+   *
+   * @throws {Error} Method not implemented.
+   */
   queryArray<T extends ArrayRow = ArrayRow>(
     _sql: string,
     _params?: Param[],
@@ -86,6 +92,11 @@ export class MySqlConnection extends CoreConnectionWrapper<
     return Promise.reject(new Error("Method not implemented."));
   }
 
+  /**
+   * Method not implemented.
+   *
+   * @throws {Error} Method not implemented.
+   */
   queryOneArray<T extends ArrayRow = ArrayRow>(
     _sql: string,
     _params?: Param[],
@@ -93,10 +104,26 @@ export class MySqlConnection extends CoreConnectionWrapper<
     return Promise.reject(new Error("Method not implemented."));
   }
 
+  /**
+   * Method not implemented.
+   *
+   * @throws {Error} Method not implemented.
+   */
   queryManyArray<T extends ArrayRow = ArrayRow>(
     _sql: string,
     _params?: Param[],
   ): Promise<AsyncIterable<T>> {
+    return Promise.reject(new Error("Method not implemented."));
+  }
+
+  /**
+   * Method not implemented.
+   *
+   * @throws {Error} Method not implemented.
+   */
+  beginTransaction(
+    _options?: MySqlTransactionOptions["beginTransactionOptions"],
+  ): Promise<MySqlTransaction> {
     return Promise.reject(new Error("Method not implemented."));
   }
 

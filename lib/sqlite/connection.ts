@@ -8,7 +8,8 @@ import {
   transformToAsyncIterable,
 } from "../core/mod.ts";
 import { Database, DatabaseOpenOptions } from "@db/sqlite";
-import { SqLiteTransactionClient } from "./transaction.ts";
+import { SqLiteTransaction } from "./transaction.ts";
+import { SqLiteTransactionOptions } from "./transaction.ts";
 
 export interface SqLiteConnectionOptions
   extends DatabaseOpenOptions, ConnectionOptions {}
@@ -16,7 +17,8 @@ export interface SqLiteConnectionOptions
 export class SqLiteConnection extends CoreConnectionWrapper<
   Database,
   SqLiteConnectionOptions,
-  SqLiteTransactionClient
+  SqLiteTransactionOptions,
+  SqLiteTransaction
 > {
   constructor(
     connectionUrl: string,
@@ -77,6 +79,12 @@ export class SqLiteConnection extends CoreConnectionWrapper<
     const res = this.client.prepare(sql).value<T>(...(params || []));
     return res;
   }
+
+  /**
+   * Method not implemented.
+   *
+   * @throws {Error} Method not implemented.
+   */
   async queryManyArray<T extends ArrayRow = ArrayRow>(
     _sql: string,
     _params?: Param[] | undefined,
@@ -84,11 +92,23 @@ export class SqLiteConnection extends CoreConnectionWrapper<
     return Promise.reject(new Error("Method not implemented."));
   }
 
+  async beginTransaction(
+    options?: SqLiteTransactionOptions["beginTransactionOptions"],
+  ): Promise<SqLiteTransaction> {
+    let query = "BEGIN";
+    if (options?.behavior) {
+      query += ` ${options.behavior}`;
+    }
+    this.client.exec(query);
+
+    return new SqLiteTransaction(this.client);
+  }
+
   async transaction<T>(
-    fn: (connection: SqLiteTransactionClient) => Promise<T>,
+    fn: (connection: SqLiteTransaction) => Promise<T>,
   ): Promise<T> {
     const res = this.client.transaction(() => {
-      return fn(new SqLiteTransactionClient(this.client));
+      return fn(new SqLiteTransaction(this.client));
     });
 
     return res();

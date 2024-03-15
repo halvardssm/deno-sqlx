@@ -6,13 +6,20 @@ import {
   Row,
 } from "../core/mod.ts";
 import { Client, ClientOptions } from "@db/postgres";
-import { PostgresTransaction } from "./transaction.ts";
+import {
+  PostgresTransaction,
+  PostgresTransactionOptions,
+} from "./transaction.ts";
 
 export interface PostgresConnectionOptions
   extends ClientOptions, ConnectionOptions {}
 
-export class PostgresConnection
-  extends CoreConnectionWrapper<Client, ClientOptions, PostgresTransaction> {
+export class PostgresConnection extends CoreConnectionWrapper<
+  Client,
+  ClientOptions,
+  PostgresTransactionOptions,
+  PostgresTransaction
+> {
   constructor(connectionUrl: string, clientOptions: ClientOptions = {}) {
     super(connectionUrl, clientOptions);
   }
@@ -53,6 +60,11 @@ export class PostgresConnection
     return res.rows[0];
   }
 
+  /**
+   * Method not implemented.
+   *
+   * @throws {Error} Method not implemented.
+   */
   queryMany<T extends Row = Row>(
     _sql: string,
     _params?: Param[],
@@ -76,11 +88,27 @@ export class PostgresConnection
     return res.rows[0];
   }
 
+  /**
+   * Method not implemented.
+   *
+   * @throws {Error} Method not implemented.
+   */
   queryManyArray<T extends ArrayRow = ArrayRow>(
     _sql: string,
     _params?: Param[],
   ): Promise<AsyncIterable<T>> {
     return Promise.reject(new Error("Method not implemented."));
+  }
+
+  async beginTransaction(
+    options: PostgresTransactionOptions["beginTransactionOptions"],
+  ): Promise<PostgresTransaction> {
+    const { name, ...rest } = options;
+    const t = new PostgresTransaction(
+      this.client.createTransaction(name, rest),
+    );
+    await t.client.begin();
+    return t;
   }
 
   async transaction<T>(
@@ -91,7 +119,7 @@ export class PostgresConnection
     );
     await transaction.client.begin();
     const res = await fn(transaction);
-    await transaction.commit();
+    await transaction.commitTransaction();
     return res;
   }
 

@@ -2,22 +2,25 @@
 import {
   ArrayRow,
   CoreTransactionClientWrapper,
+  CoreTransactionOptions,
   Param,
   Row,
   transformToAsyncIterable,
 } from "../core/mod.ts";
 import { Database } from "@db/sqlite";
 
-export class SqLiteTransactionClient
-  extends CoreTransactionClientWrapper<Database> {
-  async commit(): Promise<void> {
-    this.client.exec("COMMIT");
-  }
+export interface SqLiteTransactionOptions extends CoreTransactionOptions {
+  beginTransactionOptions: {
+    behavior?: "DEFERRED" | "IMMEDIATE" | "EXCLUSIVE";
+  };
+  commitTransactionOptions: undefined;
+  rollbackTransactionOptions: {
+    savepoint?: string;
+  };
+}
 
-  async rollback(): Promise<void> {
-    this.client.exec("ROLLBACK");
-  }
-
+export class SqLiteTransaction
+  extends CoreTransactionClientWrapper<Database, SqLiteTransactionOptions> {
   async execute(sql: string, params?: Param[]): Promise<number | undefined> {
     return this.client.exec(sql, ...(params || []));
   }
@@ -60,10 +63,38 @@ export class SqLiteTransactionClient
     const res = this.client.prepare(sql).value<T>(...(params || []));
     return res;
   }
+
+  /**
+   * Method not implemented.
+   *
+   * @throws {Error} Method not implemented.
+   */
   async queryManyArray<T extends ArrayRow = ArrayRow>(
     _sql: string,
     _params?: Param[] | undefined,
   ): Promise<AsyncIterable<T>> {
     return Promise.reject(new Error("Method not implemented."));
+  }
+
+  async createSavepoint(name: string): Promise<void> {
+    this.client.exec("SAVEPOINT ?", name);
+  }
+
+  async releaseSavepoint(name: string): Promise<void> {
+    this.client.exec("RELEASE ?", name);
+  }
+
+  async commitTransaction(): Promise<void> {
+    this.client.exec("COMMIT");
+  }
+
+  async rollbackTransaction(
+    options?: SqLiteTransactionOptions["rollbackTransactionOptions"],
+  ): Promise<void> {
+    if (options?.savepoint) {
+      this.client.exec("ROLLBACK TO ?", options.savepoint);
+    } else {
+      this.client.exec("ROLLBACK");
+    }
   }
 }
