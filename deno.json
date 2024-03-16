@@ -1,6 +1,6 @@
 {
-  "name": "@db/sqlx",
-  "version": "0.0.1",
+  "name": "@halvardm/sqlx",
+  "version": "0.0.0",
   "exports": {
     ".": "./mod.ts",
     "./core": "./lib/core/mod.ts",
