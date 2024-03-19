@@ -8,7 +8,7 @@ import {
 import { Client, ClientConfig } from "@db/mysql";
 import { MySqlTransaction, MySqlTransactionOptions } from "./transaction.ts";
 
-export type MySqlConnectionParamType = string;
+export type MySqlConnectionParamType = unknown;
 
 export interface MySqlConnectionOptions
   extends ClientConfig, ConnectionOptions {
