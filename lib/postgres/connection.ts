@@ -2,7 +2,6 @@ import {
   ArrayRow,
   ConnectionOptions,
   CoreConnectionWrapper,
-  Param,
   Row,
 } from "../core/mod.ts";
 import { Client, ClientOptions } from "@db/postgres";
@@ -11,10 +10,22 @@ import {
   PostgresTransactionOptions,
 } from "./transaction.ts";
 
+/**
+ * Type of the supported parameter types for the connection.
+ */
+export type PostgresConnectionParamType = unknown;
+
+/**
+ * Connection options for the PostgreSQL database.
+ */
 export interface PostgresConnectionOptions
   extends ClientOptions, ConnectionOptions {}
 
+/**
+ * Connection wrapper for the PostgreSQL database.
+ */
 export class PostgresConnection extends CoreConnectionWrapper<
+  PostgresConnectionParamType,
   Client,
   ClientOptions,
   PostgresTransactionOptions,
@@ -39,22 +50,33 @@ export class PostgresConnection extends CoreConnectionWrapper<
     }
   }
 
-  async execute(sql: string, params?: Param[]): Promise<number | undefined> {
+  async execute(
+    sql: string,
+    params?: PostgresConnectionParamType[],
+  ): Promise<number | undefined> {
     const res = await this.client.queryArray(sql, params);
     return res.rowCount;
   }
 
-  async query<T extends Row = Row>(
+  async query<
+    T extends Row<PostgresConnectionParamType> = Row<
+      PostgresConnectionParamType
+    >,
+  >(
     sql: string,
-    params?: Param[],
+    params?: PostgresConnectionParamType[],
   ): Promise<T[]> {
     const res = await this.client.queryObject<T>(sql, params);
     return res.rows;
   }
 
-  async queryOne<T extends Row = Row>(
+  async queryOne<
+    T extends Row<PostgresConnectionParamType> = Row<
+      PostgresConnectionParamType
+    >,
+  >(
     sql: string,
-    params?: Param[],
+    params?: PostgresConnectionParamType[],
   ): Promise<T | undefined> {
     const res = await this.client.queryObject<T>(sql, params);
     return res.rows[0];
@@ -65,24 +87,36 @@ export class PostgresConnection extends CoreConnectionWrapper<
    *
    * @throws {Error} Method not implemented.
    */
-  queryMany<T extends Row = Row>(
+  queryMany<
+    T extends Row<PostgresConnectionParamType> = Row<
+      PostgresConnectionParamType
+    >,
+  >(
     _sql: string,
-    _params?: Param[],
+    _params?: PostgresConnectionParamType[],
   ): Promise<AsyncIterable<T>> {
     return Promise.reject(new Error("Method not implemented."));
   }
 
-  async queryArray<T extends ArrayRow = ArrayRow>(
+  async queryArray<
+    T extends ArrayRow<PostgresConnectionParamType> = ArrayRow<
+      PostgresConnectionParamType
+    >,
+  >(
     sql: string,
-    params?: Param[],
+    params?: PostgresConnectionParamType[],
   ): Promise<T[]> {
     const res = await this.client.queryArray<T>(sql, params);
     return res.rows;
   }
 
-  async queryOneArray<T extends ArrayRow = ArrayRow>(
+  async queryOneArray<
+    T extends ArrayRow<PostgresConnectionParamType> = ArrayRow<
+      PostgresConnectionParamType
+    >,
+  >(
     sql: string,
-    params?: Param[],
+    params?: PostgresConnectionParamType[],
   ): Promise<T | undefined> {
     const res = await this.client.queryArray<T>(sql, params);
     return res.rows[0];
@@ -93,9 +127,13 @@ export class PostgresConnection extends CoreConnectionWrapper<
    *
    * @throws {Error} Method not implemented.
    */
-  queryManyArray<T extends ArrayRow = ArrayRow>(
+  queryManyArray<
+    T extends ArrayRow<PostgresConnectionParamType> = ArrayRow<
+      PostgresConnectionParamType
+    >,
+  >(
     _sql: string,
-    _params?: Param[],
+    _params?: PostgresConnectionParamType[],
   ): Promise<AsyncIterable<T>> {
     return Promise.reject(new Error("Method not implemented."));
   }

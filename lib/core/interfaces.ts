@@ -6,18 +6,22 @@
  * Parameter type for SQL queries.
  * This is a union of all types that can be used as parameters in SQL queries.
  */
-export type Param = string | number | boolean | null;
+export type Param<T> = string | number | boolean | null | T;
 
 /**
  * Row type for SQL queries, represented as an object entry.
  */
-export type Row = Record<string, unknown>;
+export type Row<T> = Record<string, Param<T>>;
 
 /**
  * Row type for SQL queries, represented as an array entry.
  */
-export type ArrayRow = unknown[];
+export type ArrayRow<T> = Param<T>[];
 
+/**
+ * Core transaction options
+ * Used to type the options for the transaction methods
+ */
 export type CoreTransactionOptions = {
   beginTransactionOptions?: Record<string, unknown>;
   commitTransactionOptions?: Record<string, unknown>;
@@ -69,7 +73,7 @@ export interface Connectable<Options extends ConnectionOptions> {
  *
  * Represents an object that can execute SQL queries.
  */
-export interface Queriable {
+export interface Queriable<ParamType> {
   /**
    * Execute a SQL statement
    *
@@ -77,7 +81,7 @@ export interface Queriable {
    * @param params the parameters to bind to the SQL statement
    * @returns the number of affected rows if any
    */
-  execute(sql: string, params?: Param[]): Promise<number | undefined>;
+  execute(sql: string, params?: ParamType[]): Promise<number | undefined>;
   /**
    * Query the database
    *
@@ -85,9 +89,9 @@ export interface Queriable {
    * @param params the parameters to bind to the SQL statement
    * @returns the rows returned by the query as object entries
    */
-  query<T extends Row = Row>(
+  query<T extends Row<ParamType> = Row<ParamType>>(
     sql: string,
-    params?: Param[],
+    params?: ParamType[],
   ): Promise<T[]>;
   /**
    * Query the database and return at most one row
@@ -96,9 +100,9 @@ export interface Queriable {
    * @param params the parameters to bind to the SQL statement
    * @returns the row returned by the query as an object entry, or undefined if no row is returned
    */
-  queryOne<T extends Row = Row>(
+  queryOne<T extends Row<ParamType> = Row<ParamType>>(
     sql: string,
-    params?: Param[],
+    params?: ParamType[],
   ): Promise<T | undefined>;
   /**
    * Query the database and return an iterator.
@@ -108,9 +112,9 @@ export interface Queriable {
    * @param params the parameters to bind to the SQL statement
    * @returns the rows returned by the query as object entries
    */
-  queryMany<T extends Row = Row>(
+  queryMany<T extends Row<ParamType> = Row<ParamType>>(
     sql: string,
-    params?: Param[],
+    params?: ParamType[],
   ): Promise<AsyncIterable<T>>;
   /**
    * Query the database
@@ -119,9 +123,9 @@ export interface Queriable {
    * @param params the parameters to bind to the SQL statement
    * @returns the rows returned by the query as array entries
    */
-  queryArray<T extends ArrayRow = ArrayRow>(
+  queryArray<T extends ArrayRow<ParamType> = ArrayRow<ParamType>>(
     sql: string,
-    params?: Param[],
+    params?: ParamType[],
   ): Promise<T[]>;
   /**
    * Query the database and return at most one row
@@ -130,9 +134,9 @@ export interface Queriable {
    * @param params the parameters to bind to the SQL statement
    * @returns the row returned by the query as an array entry, or undefined if no row is returned
    */
-  queryOneArray<T extends ArrayRow = ArrayRow>(
+  queryOneArray<T extends ArrayRow<ParamType> = ArrayRow<ParamType>>(
     sql: string,
-    params?: Param[],
+    params?: ParamType[],
   ): Promise<T | undefined>;
 
   /**
@@ -143,9 +147,9 @@ export interface Queriable {
    * @param params the parameters to bind to the SQL statement
    * @returns the rows returned by the query as array entries
    */
-  queryManyArray<T extends ArrayRow = ArrayRow>(
+  queryManyArray<T extends ArrayRow<ParamType> = ArrayRow<ParamType>>(
     sql: string,
-    params?: Param[],
+    params?: ParamType[],
   ): Promise<AsyncIterable<T>>;
 }
 
@@ -155,8 +159,9 @@ export interface Queriable {
  * Represents an object that can execute a transaction.
  */
 export interface Transactionable<
+  ParamType,
   TransactionOptions extends CoreTransactionOptions,
-  TransactionClient extends TransactionQueriable<TransactionOptions>,
+  TransactionClient extends TransactionQueriable<ParamType, TransactionOptions>,
 > {
   /**
    * Starts a transaction
@@ -200,8 +205,9 @@ export interface Poolable<Connection> {
  * Represents a transaction client to a database.
  */
 export interface TransactionQueriable<
+  ParamType,
   TransactionOptions extends CoreTransactionOptions,
-> extends Queriable {
+> extends Queriable<ParamType> {
   /**
    * Commit the transaction
    */
@@ -243,13 +249,14 @@ export interface ConnectionOptions extends Record<string, unknown> {}
  * they should use a class implementing this interface.
  */
 export interface Connection<
+  ParamType,
   Options extends ConnectionOptions,
   TransactionOptions extends CoreTransactionOptions,
-  TransactionClient extends TransactionQueriable<TransactionOptions>,
+  TransactionClient extends TransactionQueriable<ParamType, TransactionOptions>,
 > extends
   Connectable<Options>,
-  Queriable,
-  Transactionable<TransactionOptions, TransactionClient> {
+  Queriable<ParamType>,
+  Transactionable<ParamType, TransactionOptions, TransactionClient> {
 }
 
 /**
@@ -260,12 +267,13 @@ export interface Connection<
  * they should use a class implementing this interface.
  */
 export interface ConnectionPool<
+  ParamType,
   Options extends ConnectionPoolOptions,
   TransactionOptions extends CoreTransactionOptions,
-  TransactionClient extends TransactionQueriable<TransactionOptions>,
-  Pool extends PoolConnection<TransactionOptions, TransactionClient>,
+  TransactionClient extends TransactionQueriable<ParamType, TransactionOptions>,
+  Pool extends PoolConnection<ParamType, TransactionOptions, TransactionClient>,
 > extends
-  Connection<Options, TransactionOptions, TransactionClient>,
+  Connection<ParamType, Options, TransactionOptions, TransactionClient>,
   Poolable<Pool> {
 }
 
@@ -284,9 +292,12 @@ export interface ConnectionPoolOptions extends ConnectionOptions {
  * they should use a class implementing this interface.
  */
 export interface PoolConnection<
+  ParamType,
   TransactionOptions extends CoreTransactionOptions,
-  TransactionClient extends TransactionQueriable<TransactionOptions>,
-> extends Queriable, Transactionable<TransactionOptions, TransactionClient> {
+  TransactionClient extends TransactionQueriable<ParamType, TransactionOptions>,
+> extends
+  Queriable<ParamType>,
+  Transactionable<ParamType, TransactionOptions, TransactionClient> {
   /**
    * Release the connection to the pool
    */
@@ -313,10 +324,12 @@ export interface PoolConnection<
  * This class should be extended by database drivers to implement the Connection interface.
  */
 export abstract class AbstractConnection<
+  ParamType,
   Options extends ConnectionOptions,
   TransactionOptions extends CoreTransactionOptions,
-  TransactionClient extends TransactionQueriable<TransactionOptions>,
-> implements Connection<Options, TransactionOptions, TransactionClient> {
+  TransactionClient extends TransactionQueriable<ParamType, TransactionOptions>,
+> implements
+  Connection<ParamType, Options, TransactionOptions, TransactionClient> {
   connectionUrl: string;
   connectionOptions: Options;
 
@@ -329,31 +342,31 @@ export abstract class AbstractConnection<
   abstract close(): Promise<void>;
   abstract execute(
     sql: string,
-    params?: Param[] | undefined,
+    params?: ParamType[] | undefined,
   ): Promise<number | undefined>;
-  abstract query<T extends Row = Row>(
+  abstract query<T extends Row<ParamType> = Row<ParamType>>(
     sql: string,
-    params?: Param[] | undefined,
+    params?: ParamType[] | undefined,
   ): Promise<T[]>;
-  abstract queryOne<T extends Row = Row>(
+  abstract queryOne<T extends Row<ParamType> = Row<ParamType>>(
     sql: string,
-    params?: Param[] | undefined,
+    params?: ParamType[] | undefined,
   ): Promise<T | undefined>;
-  abstract queryMany<T extends Row = Row>(
+  abstract queryMany<T extends Row<ParamType> = Row<ParamType>>(
     sql: string,
-    params?: Param[] | undefined,
+    params?: ParamType[] | undefined,
   ): Promise<AsyncIterable<T>>;
-  abstract queryArray<T extends ArrayRow = ArrayRow>(
+  abstract queryArray<T extends ArrayRow<ParamType> = ArrayRow<ParamType>>(
     sql: string,
-    params?: Param[] | undefined,
+    params?: ParamType[] | undefined,
   ): Promise<T[]>;
-  abstract queryOneArray<T extends ArrayRow = ArrayRow>(
+  abstract queryOneArray<T extends ArrayRow<ParamType> = ArrayRow<ParamType>>(
     sql: string,
-    params?: Param[] | undefined,
+    params?: ParamType[] | undefined,
   ): Promise<T | undefined>;
-  abstract queryManyArray<T extends ArrayRow = ArrayRow>(
+  abstract queryManyArray<T extends ArrayRow<ParamType> = ArrayRow<ParamType>>(
     sql: string,
-    params?: Param[] | undefined,
+    params?: ParamType[] | undefined,
   ): Promise<AsyncIterable<T>>;
   abstract beginTransaction(
     options?: TransactionOptions["beginTransactionOptions"],
@@ -372,13 +385,24 @@ export abstract class AbstractConnection<
  * This class should be extended by database drivers to implement the ConnectionPool interface.
  */
 export abstract class AbstractConnectionPool<
+  ParamType,
   Options extends ConnectionPoolOptions,
   TransactionOptions extends CoreTransactionOptions,
-  TransactionClient extends TransactionQueriable<TransactionOptions>,
-  Pool extends PoolConnection<TransactionOptions, TransactionClient>,
-> extends AbstractConnection<Options, TransactionOptions, TransactionClient>
-  implements
-    ConnectionPool<Options, TransactionOptions, TransactionClient, Pool> {
+  TransactionClient extends TransactionQueriable<ParamType, TransactionOptions>,
+  Pool extends PoolConnection<ParamType, TransactionOptions, TransactionClient>,
+> extends AbstractConnection<
+  ParamType,
+  Options,
+  TransactionOptions,
+  TransactionClient
+> implements
+  ConnectionPool<
+    ParamType,
+    Options,
+    TransactionOptions,
+    TransactionClient,
+    Pool
+  > {
   poolSize: number;
 
   constructor(connectionUrl: string, connectionOptions: Options) {

@@ -3,10 +3,10 @@ import {
   CoreTransactionClientWrapper,
   CoreTransactionOptions,
   emptyAsyncIterable,
-  Param,
   Row,
 } from "../core/mod.ts";
 import { Connection } from "@db/mysql";
+import { MySqlConnectionParamType } from "./connection.ts";
 
 export interface MySqlTransactionOptions extends CoreTransactionOptions {
   beginTransactionOptions: {
@@ -24,8 +24,17 @@ export interface MySqlTransactionOptions extends CoreTransactionOptions {
   };
 }
 
-export class MySqlTransaction
-  extends CoreTransactionClientWrapper<Connection, MySqlTransactionOptions> {
+/**
+ * Transaction wrapper for the MySQL database.
+ */
+export class MySqlTransaction extends CoreTransactionClientWrapper<
+  MySqlConnectionParamType,
+  Connection,
+  MySqlTransactionOptions
+> {
+  /**
+   * @inheritdoc
+   */
   async commitTransaction(
     options?: MySqlTransactionOptions["commitTransactionOptions"],
   ): Promise<void> {
@@ -46,6 +55,9 @@ export class MySqlTransaction
     await this.client.execute(query);
   }
 
+  /**
+   * @inheritdoc
+   */
   async rollbackTransaction(
     options?: MySqlTransactionOptions["rollbackTransactionOptions"],
   ): Promise<void> {
@@ -72,37 +84,65 @@ export class MySqlTransaction
     await this.client.execute(query);
   }
 
+  /**
+   * @inheritdoc
+   */
   async createSavepoint(name: string): Promise<void> {
     await this.client.execute("SAVEPOINT ?", [name]);
   }
+
+  /**
+   * @inheritdoc
+   */
   async releaseSavepoint(name: string): Promise<void> {
     await this.client.execute("RELEASE SAVEPOINT ?", [name]);
   }
 
-  async execute(sql: string, params?: Param[]): Promise<number | undefined> {
+  /**
+   * @inheritdoc
+   */
+  async execute(
+    sql: string,
+    params?: MySqlConnectionParamType[],
+  ): Promise<number | undefined> {
     const res = await this.client.execute(sql, params);
     return res.affectedRows;
   }
 
-  async query<T extends Row = Row>(
+  /**
+   * @inheritdoc
+   */
+  async query<
+    T extends Row<MySqlConnectionParamType> = Row<MySqlConnectionParamType>,
+  >(
     sql: string,
-    params?: Param[],
+    params?: MySqlConnectionParamType[],
   ): Promise<T[]> {
     const res = await this.client.execute(sql, params);
     return (res.rows || []) as T[];
   }
 
-  async queryOne<T extends Row = Row>(
+  /**
+   * @inheritdoc
+   */
+  async queryOne<
+    T extends Row<MySqlConnectionParamType> = Row<MySqlConnectionParamType>,
+  >(
     sql: string,
-    params?: Param[],
+    params?: MySqlConnectionParamType[],
   ): Promise<T | undefined> {
     const res = await this.client.execute(sql, params);
     return ((res.rows || []) as T[])[0];
   }
 
-  async queryMany<T extends Row = Row>(
+  /**
+   * @inheritdoc
+   */
+  async queryMany<
+    T extends Row<MySqlConnectionParamType> = Row<MySqlConnectionParamType>,
+  >(
     sql: string,
-    params?: Param[],
+    params?: MySqlConnectionParamType[],
   ): Promise<AsyncIterable<T>> {
     const res = await this.client.execute(sql, params, true);
     return (res.iterator ?? emptyAsyncIterable()) as AsyncIterable<T>;
@@ -113,9 +153,13 @@ export class MySqlTransaction
    *
    * @throws {Error} Method not implemented.
    */
-  queryArray<T extends ArrayRow = ArrayRow>(
+  queryArray<
+    T extends ArrayRow<MySqlConnectionParamType> = ArrayRow<
+      MySqlConnectionParamType
+    >,
+  >(
     _sql: string,
-    _params?: Param[],
+    _params?: MySqlConnectionParamType[],
   ): Promise<T[]> {
     return Promise.reject(new Error("Method not implemented."));
   }
@@ -125,9 +169,13 @@ export class MySqlTransaction
    *
    * @throws {Error} Method not implemented.
    */
-  queryOneArray<T extends ArrayRow = ArrayRow>(
+  queryOneArray<
+    T extends ArrayRow<MySqlConnectionParamType> = ArrayRow<
+      MySqlConnectionParamType
+    >,
+  >(
     _sql: string,
-    _params?: Param[],
+    _params?: MySqlConnectionParamType[],
   ): Promise<T | undefined> {
     return Promise.reject(new Error("Method not implemented."));
   }
@@ -137,9 +185,13 @@ export class MySqlTransaction
    *
    * @throws {Error} Method not implemented.
    */
-  queryManyArray<T extends ArrayRow = ArrayRow>(
+  queryManyArray<
+    T extends ArrayRow<MySqlConnectionParamType> = ArrayRow<
+      MySqlConnectionParamType
+    >,
+  >(
     _sql: string,
-    _params?: Param[],
+    _params?: MySqlConnectionParamType[],
   ): Promise<AsyncIterable<T>> {
     return Promise.reject(new Error("Method not implemented."));
   }

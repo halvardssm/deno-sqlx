@@ -11,7 +11,6 @@ import {
   ConnectionOptions,
   ConnectionPoolOptions,
   CoreTransactionOptions,
-  Param,
   PoolConnection,
   Row,
   TransactionQueriable,
@@ -26,11 +25,13 @@ import {
  * If you are building a web application, you most likely want to use a connection pool (CoreConnectionPool) instead.
  */
 export abstract class CoreConnectionWrapper<
+  ParamType,
   Client,
   ClientOptions extends ConnectionOptions,
   TransactionOptions extends CoreTransactionOptions,
-  TransactionClient extends TransactionQueriable<TransactionOptions>,
+  TransactionClient extends TransactionQueriable<ParamType, TransactionOptions>,
 > extends AbstractConnection<
+  ParamType,
   ClientOptions,
   TransactionOptions,
   TransactionClient
@@ -67,12 +68,18 @@ export abstract class CoreConnectionWrapper<
  * If you are writing simple scripts, you most likely want to use a single connection (CoreConnection) instead.
  */
 export abstract class CoreConnectionPoolWrapper<
+  ParamType,
   Client,
   ClientOptions extends ConnectionPoolOptions,
   TransactionOptions extends CoreTransactionOptions,
-  TransactionClient extends TransactionQueriable<TransactionOptions>,
-  PoolClient extends PoolConnection<TransactionOptions, TransactionClient>,
+  TransactionClient extends TransactionQueriable<ParamType, TransactionOptions>,
+  PoolClient extends PoolConnection<
+    ParamType,
+    TransactionOptions,
+    TransactionClient
+  >,
 > extends AbstractConnectionPool<
+  ParamType,
   ClientOptions,
   TransactionOptions,
   TransactionClient,
@@ -107,10 +114,11 @@ export abstract class CoreConnectionPoolWrapper<
  * Represents a single connection from a pool connection to a database.
  */
 export abstract class CorePoolConnectionWrapper<
+  ParamType,
   Client,
   TransactionOptions extends CoreTransactionOptions,
-  TransactionClient extends TransactionQueriable<TransactionOptions>,
-> implements PoolConnection<TransactionOptions, TransactionClient> {
+  TransactionClient extends TransactionQueriable<ParamType, TransactionOptions>,
+> implements PoolConnection<ParamType, TransactionOptions, TransactionClient> {
   /**
    * Connection to the database
    */
@@ -124,30 +132,33 @@ export abstract class CorePoolConnectionWrapper<
   }
 
   abstract release(): Promise<void>;
-  abstract execute(sql: string, params?: Param[]): Promise<number | undefined>;
-  abstract query<T extends Row = Row>(
+  abstract execute(
     sql: string,
-    params?: Param[],
+    params?: ParamType[],
+  ): Promise<number | undefined>;
+  abstract query<T extends Row<ParamType> = Row<ParamType>>(
+    sql: string,
+    params?: ParamType[],
   ): Promise<T[]>;
-  abstract queryOne<T extends Row = Row>(
+  abstract queryOne<T extends Row<ParamType> = Row<ParamType>>(
     sql: string,
-    params?: Param[],
+    params?: ParamType[],
   ): Promise<T | undefined>;
-  abstract queryMany<T extends Row = Row>(
+  abstract queryMany<T extends Row<ParamType> = Row<ParamType>>(
     sql: string,
-    params?: Param[],
+    params?: ParamType[],
   ): Promise<AsyncIterable<T>>;
-  abstract queryArray<T extends ArrayRow = ArrayRow>(
+  abstract queryArray<T extends ArrayRow<ParamType> = ArrayRow<ParamType>>(
     sql: string,
-    params?: Param[],
+    params?: ParamType[],
   ): Promise<T[]>;
-  abstract queryOneArray<T extends ArrayRow = ArrayRow>(
+  abstract queryOneArray<T extends ArrayRow<ParamType> = ArrayRow<ParamType>>(
     sql: string,
-    params?: Param[],
+    params?: ParamType[],
   ): Promise<T | undefined>;
-  abstract queryManyArray<T extends ArrayRow = ArrayRow>(
+  abstract queryManyArray<T extends ArrayRow<ParamType> = ArrayRow<ParamType>>(
     sql: string,
-    params?: Param[],
+    params?: ParamType[],
   ): Promise<AsyncIterable<T>>;
   abstract beginTransaction(
     options?: TransactionOptions["beginTransactionOptions"],
@@ -166,9 +177,10 @@ export abstract class CorePoolConnectionWrapper<
  * Represents a transaction client to a database.
  */
 export abstract class CoreTransactionClientWrapper<
+  ParamType,
   TransactionClient,
   TransactionOptions extends CoreTransactionOptions,
-> implements TransactionQueriable<TransactionOptions> {
+> implements TransactionQueriable<ParamType, TransactionOptions> {
   /**
    * Connection to the database
    */
@@ -180,30 +192,33 @@ export abstract class CoreTransactionClientWrapper<
     this.client = transactionClient;
   }
 
-  abstract execute(sql: string, params?: Param[]): Promise<number | undefined>;
-  abstract query<T extends Row = Row>(
+  abstract execute(
     sql: string,
-    params?: Param[],
+    params?: ParamType[],
+  ): Promise<number | undefined>;
+  abstract query<T extends Row<ParamType> = Row<ParamType>>(
+    sql: string,
+    params?: ParamType[],
   ): Promise<T[]>;
-  abstract queryOne<T extends Row = Row>(
+  abstract queryOne<T extends Row<ParamType> = Row<ParamType>>(
     sql: string,
-    params?: Param[],
+    params?: ParamType[],
   ): Promise<T | undefined>;
-  abstract queryMany<T extends Row = Row>(
+  abstract queryMany<T extends Row<ParamType> = Row<ParamType>>(
     sql: string,
-    params?: Param[],
+    params?: ParamType[],
   ): Promise<AsyncIterable<T>>;
-  abstract queryArray<T extends ArrayRow = ArrayRow>(
+  abstract queryArray<T extends ArrayRow<ParamType> = ArrayRow<ParamType>>(
     sql: string,
-    params?: Param[],
+    params?: ParamType[],
   ): Promise<T[]>;
-  abstract queryOneArray<T extends ArrayRow = ArrayRow>(
+  abstract queryOneArray<T extends ArrayRow<ParamType> = ArrayRow<ParamType>>(
     sql: string,
-    params?: Param[],
+    params?: ParamType[],
   ): Promise<T | undefined>;
-  abstract queryManyArray<T extends ArrayRow = ArrayRow>(
+  abstract queryManyArray<T extends ArrayRow<ParamType> = ArrayRow<ParamType>>(
     sql: string,
-    params?: Param[],
+    params?: ParamType[],
   ): Promise<AsyncIterable<T>>;
   abstract commitTransaction(
     options?: TransactionOptions["commitTransactionOptions"],
