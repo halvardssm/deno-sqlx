@@ -16,6 +16,7 @@
     "doc:check": "deno doc --lint lib",
     "test": "deno task db:restart && deno test -A --unstable-ffi --coverage; deno task db:stop",
     "test:ga": "deno task db:start && deno test -A --unstable-ffi --coverage && deno task db:stop",
+    "coverage:lcov": "deno coverage --exclude=vendor --lcov > coverage.lcov",
     "db:restart": "deno task db:stop && deno task db:start",
     "db:start": "docker compose up -d --remove-orphans --wait && sleep 2",
     "db:stop": "docker compose down --remove-orphans --volumes"
