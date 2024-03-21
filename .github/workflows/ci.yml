@@ -35,7 +35,7 @@ jobs:
         uses: denoland/setup-deno@v1
 
       - name: Run unit tests
-        run: deno task test
+        run: deno task test:ga
 
       - name: Generate lcov
         run: deno coverage --unstable --lcov ./coverage > coverage.lcov
